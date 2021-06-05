@@ -9,8 +9,11 @@ const controls = {}
 
 
 
-controls.home = function(req, res) {
-    res.status(200).json({"message":"welcome to home."})
+controls.home = async function(req, res) {
+    const token = req.token;
+    // const token = res.cookies.token;
+    const user = await helper.getUser(token);
+    res.render('home', { user: user })
 }
 
 controls.register = function(req, res) {
@@ -32,25 +35,32 @@ controls.register = function(req, res) {
 
 
 controls.login = function(req, res) {
-    const username = typeof req.body.username === 'string' && req.body.username.length > 0? req.body.username: false;
-    const password = typeof req.body.password === 'string' && req.body.password.length > 0? req.body.password: false;
+    console.log(req.method)
+    if (req.method == 'POST') {
+        const username = typeof req.body.username === 'string' && req.body.username.length > 0? req.body.username: false;
+        const password = typeof req.body.password === 'string' && req.body.password.length > 0? req.body.password: false;
 
-    if (username && password) {
-        const hashPass = helper.hash(password)
-        user.findOne({username,password:hashPass}, function(err, data) {
-            if (data) {
-                jwt.sign({ data }, process.env.jwtSecret, {expiresIn: '1h'}, (err, token) => {
-                    if (err) res.status(403).json({'ERR Response':'Unable to create signature.'})
-                    res.status(200).json({token})
-                    res.cookie('auth',token)
-                });
-            } else {
-                res.status(403).json({'ERR Response':'No data are fetched ERR.'})
-            }
-        });
-    } else {
-        res.status(400).json({'ERR Response':'Required Fields are missing or invalid.'})
+        if (username && password) {
+            const hashPass = helper.hash(password)
+            user.findOne({username,password:hashPass}, function(err, data) {
+                if (data) {
+                    jwt.sign({ data }, process.env.jwtSecret, {expiresIn: '1h'}, async (err, token) => {
+                        if (err) res.status(403).json({'ERR Response':'Unable to create signature.'})
+                        res.cookie("auth", token, { maxAge: 3600000000 });
+                        res.redirect('/')
+                    });
+                } else {
+                    res.status(403).json({'ERR Response':'No data are fetched ERR.'})
+                }
+            });
+        } else {
+            res.status(400).json({'ERR Response':'Required Fields are missing or invalid.'})
+        }
     }
+    if (req.method == 'GET') {
+        res.render('login')
+    }
+    
 }
 
 
@@ -216,16 +226,12 @@ controls.myCart = function(req, res) {
     });
 }
 
-// cart.pre('save', function(next) {
-//     this.user_id = verifiedData.data._id;
-//     next()
-// }); 
-// const myCart = new product()
-
-
-// controls.login = function(req, res) {
-//     console.log("Login user")
-// }
+controls.viewCart = async function(req, res) {
+    const cartItems = (await cart.findCartItems(req.user._id))
+    // console.log(JSON.stringify(cartItems, null, 4))
+    // res.send({ Message: "my cart page"})
+    res.render('cart', { items: cartItems, req: req })
+}
 
 
 module.exports = controls;

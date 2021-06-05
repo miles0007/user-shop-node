@@ -74,10 +74,22 @@ const cartSchema = new mongoose.Schema({
     }]
 })
 
+cartSchema.statics.findCartItems = async function (user_id) {
+  const cartItem = await cart.findOne({ user_id: user_id }).populate("products.product_id");
+  return cartItem;
+};
+
+// cartSchema.virtual = ('products', {
+//     ref: 'product',
+//     foreignField: 'products.product_id',
+//     loca: 
+// })
 
 const user = mongoose.model("user", userSchema)
 const product = mongoose.model("product",productSchema)
 const cart = mongoose.model("cart", cartSchema)
+
+
 
 module.exports = {
     user: user,
